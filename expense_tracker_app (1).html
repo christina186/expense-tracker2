@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作天數記帳 App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        // 設定支出預覽功能
+        function setupExpensePreview() {
+            const expenseInput = document.getElementById('expenseAmount');
+            
+            // 即時預覽功能
+            expenseInput.addEventListener('input', function() {
+                const inputValue = parseFloat(this.value) || 0;
+                
+                if (inputValue > 0 && salaryData.daily > 0) {
+                    previewAmount = inputValue;
+                } else {
+                    previewAmount = 0;
+                }
+                
+                renderCalendar(); // 重新渲染日曆以顯示預覽
+            });
+
+            // 當輸入框失去焦點時，如果為空則清除預覽
+            expenseInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    previewAmount = 0;
+                    renderCalendar();
+                }
+            });
+
+            // 支援 Enter 鍵
+            expenseInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addExpense();
+                }
+            });
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .balance {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .salary-section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .salary-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .salary-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .input-group input {
+            padding: 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .expense-section {
+            padding: 20px;
+        }
+
+        .expense-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .expense-input input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 15px;
+            font-size: 16px;
+        }
+
+        .expense-input button {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .expense-input button:hover {
+            transform: translateY(-2px);
+        }
+
+        .calendar {
+            margin-top: 20px;
+        }
+
+        .calendar-header {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            padding: 5px;
+            font-weight: 600;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .day.current-month {
+            background: #f8f9fa;
+            color: #333;
+        }
+
+        .day.other-month {
+            color: #ccc;
+        }
+
+        .day.spent {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            transform: scale(0.95);
+        }
+
+        .day.preview {
+            background: linear-gradient(135deg, #ff69b4, #ff1493);
+            color: white;
+            transform: scale(0.9);
+            opacity: 0.8;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        .day.today {
+            border: 2px solid #4facfe;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .expenses-list {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .expense-amount {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .salary-inputs {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>工作天數記帳</h1>
+            <div class="balance" id="balance">設定薪資開始記帳</div>
+        </div>
+
+        <div class="salary-section">
+            <h3>💰 薪資設定</h3>
+            <div class="salary-inputs">
+                <div class="input-group">
+                    <label>月薪</label>
+                    <input type="number" id="monthlySalary" placeholder="30000">
+                </div>
+                <div class="input-group">
+                    <label>日薪</label>
+                    <input type="number" id="dailySalary" placeholder="1000">
+                </div>
+                <div class="input-group">
+                    <label>時薪</label>
+                    <input type="number" id="hourlySalary" placeholder="125">
+                </div>
+            </div>
+        </div>
+
+        <div class="expense-section">
+            <h3>💸 新增支出</h3>
+            <div class="expense-input">
+                <input type="number" id="expenseAmount" placeholder="輸入支出金額">
+                <button onclick="addExpense()">記帳</button>
+            </div>
+
+            <div class="calendar">
+                <div class="calendar-header" id="calendarHeader"></div>
+                <div class="calendar-grid">
+                    <div class="weekday">日</div>
+                    <div class="weekday">一</div>
+                    <div class="weekday">二</div>
+                    <div class="weekday">三</div>
+                    <div class="weekday">四</div>
+                    <div class="weekday">五</div>
+                    <div class="weekday">六</div>
+                </div>
+                <div class="calendar-grid" id="calendarDays"></div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f8f9fa; border: 1px solid #ddd;"></div>
+                        <span>未花費</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);"></div>
+                        <span>已花費天數</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(135deg, #ff69b4, #ff1493);"></div>
+                        <span>預覽花費</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="expenses-list" id="expensesList"></div>
+            <button class="clear-btn" onclick="clearAllData()">清除所有記錄</button>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let currentMonth = new Date().getMonth();
+        let currentYear = 2025;
+        let salaryData = { monthly: 0, daily: 0, hourly: 0 };
+        let expenses = [];
+        let totalSpent = 0;
+        let previewAmount = 0; // 新增：預覽金額
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            setupSalaryInputs();
+            setupExpensePreview(); // 新增：設定預覽功能
+            renderCalendar();
+            updateBalance();
+            renderExpensesList();
+        });
+
+        // 載入儲存的資料
+        function loadData() {
+            const savedSalary = localStorage.getItem('salaryData');
+            const savedExpenses = localStorage.getItem('expenses');
+            const savedTotalSpent = localStorage.getItem('totalSpent');
+
+            if (savedSalary) {
+                salaryData = JSON.parse(savedSalary);
+                document.getElementById('monthlySalary').value = salaryData.monthly;
+                document.getElementById('dailySalary').value = salaryData.daily;
+                document.getElementById('hourlySalary').value = salaryData.hourly;
+            }
+
+            if (savedExpenses) {
+                expenses = JSON.parse(savedExpenses);
+            }
+
+            if (savedTotalSpent) {
+                totalSpent = parseFloat(savedTotalSpent);
+            }
+        }
+
+        // 儲存資料
+        function saveData() {
+            localStorage.setItem('salaryData', JSON.stringify(salaryData));
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            localStorage.setItem('totalSpent', totalSpent.toString());
+        }
+
+        // 設定薪資輸入框事件
+        function setupSalaryInputs() {
+            const monthlyInput = document.getElementById('monthlySalary');
+            const dailyInput = document.getElementById('dailySalary');
+            const hourlyInput = document.getElementById('hourlySalary');
+
+            monthlyInput.addEventListener('input', function() {
+                if (this.value) {
+                    const monthly = parseFloat(this.value);
+                    const daily = monthly / 30;
+                    const hourly = daily / 8;
+
+                    salaryData = { monthly, daily, hourly };
+                    dailyInput.value = Math.round(daily);
+                    hourlyInput.value = Math.round(hourly);
+                    saveData();
+                    updateBalance();
+                    renderCalendar();
+                }
+            });
+
+            dailyInput.addEventListener('input', function() {
+                if (this.value) {
+                    const daily = parseFloat(this.value);
+                    const monthly = daily * 30;
+                    const hourly = daily / 8;
+
+                    salaryData = { monthly, daily, hourly };
+                    monthlyInput.value = Math.round(monthly);
+                    hourlyInput.value = Math.round(hourly);
+                    saveData();
+                    updateBalance();
+                    renderCalendar();
+                }
+            });
+
+            hourlyInput.addEventListener('input', function() {
+                if (this.value) {
+                    const hourly = parseFloat(this.value);
+                    const daily = hourly * 8;
+                    const monthly = daily * 30;
+
+                    salaryData = { monthly, daily, hourly };
+                    monthlyInput.value = Math.round(monthly);
+                    dailyInput.value = Math.round(daily);
+                    saveData();
+                    updateBalance();
+                    renderCalendar();
+                }
+            });
+        }
+
+        // 新增支出
+        function addExpense() {
+            const expenseInput = document.getElementById('expenseAmount');
+            const amount = parseFloat(expenseInput.value);
+
+            if (!amount || amount <= 0) {
+                alert('請輸入有效的支出金額');
+                return;
+            }
+
+            if (salaryData.daily === 0) {
+                alert('請先設定薪資');
+                return;
+            }
+
+            expenses.push({
+                amount: amount,
+                date: new Date().toISOString(),
+                days: Math.ceil(amount / salaryData.daily)
+            });
+
+            totalSpent += amount;
+            expenseInput.value = '';
+            previewAmount = 0; // 清除預覽
+
+            saveData();
+            updateBalance();
+            renderCalendar();
+            renderExpensesList();
+        }
+
+        // 更新餘額顯示
+        function updateBalance() {
+            const balanceElement = document.getElementById('balance');
+            
+            if (salaryData.monthly === 0) {
+                balanceElement.textContent = '設定薪資開始記帳';
+                return;
+            }
+
+            const remaining = salaryData.monthly - totalSpent;
+            const remainingDays = Math.floor(remaining / salaryData.daily);
+
+            if (remaining >= 0) {
+                balanceElement.textContent = `剩下 ${Math.round(remaining)} 元（${remainingDays} 天）`;
+            } else {
+                balanceElement.textContent = `超支 ${Math.round(Math.abs(remaining))} 元`;
+                balanceElement.style.color = '#ff6b6b';
+            }
+        }
+
+        // 渲染月曆
+        function renderCalendar() {
+            const calendarHeader = document.getElementById('calendarHeader');
+            const calendarDays = document.getElementById('calendarDays');
+
+            const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月',
+                              '7月', '8月', '9月', '10月', '11月', '12月'];
+            
+            calendarHeader.textContent = `${currentYear} 年 ${monthNames[currentMonth]}`;
+
+            // 計算月曆
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            const spentDays = Math.ceil(totalSpent / (salaryData.daily || 1));
+            const previewDays = Math.ceil(previewAmount / (salaryData.daily || 1)); // 新增：預覽天數
+            const today = new Date();
+
+            let calendarHTML = '';
+            let currentDate = new Date(startDate);
+
+            for (let i = 0; i < 42; i++) {
+                const dayNumber = currentDate.getDate();
+                const isCurrentMonth = currentDate.getMonth() === currentMonth;
+                const isToday = currentDate.toDateString() === today.toDateString();
+                const isSpent = isCurrentMonth && dayNumber <= spentDays;
+                const isPreview = isCurrentMonth && dayNumber > spentDays && dayNumber <= (spentDays + previewDays); // 新增：預覽判斷
+
+                let classes = ['day'];
+                if (isCurrentMonth) classes.push('current-month');
+                else classes.push('other-month');
+                if (isToday) classes.push('today');
+                if (isSpent) classes.push('spent');
+                else if (isPreview && previewAmount > 0) classes.push('preview'); // 新增：預覽樣式
+
+                calendarHTML += `<div class="${classes.join(' ')}">${dayNumber}</div>`;
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            calendarDays.innerHTML = calendarHTML;
+        }
+
+        // 渲染支出清單
+        function renderExpensesList() {
+            const expensesList = document.getElementById('expensesList');
+            
+            if (expenses.length === 0) {
+                expensesList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">尚無支出記錄</div>';
+                return;
+            }
+
+            let listHTML = '<h4 style="margin-bottom: 10px;">💳 支出記錄</h4>';
+            expenses.forEach((expense, index) => {
+                const date = new Date(expense.date);
+                listHTML += `
+                    <div class="expense-item">
+                        <span>${date.getMonth() + 1}/${date.getDate()} - ${expense.days} 天</span>
+                        <span class="expense-amount">-$${expense.amount}</span>
+                    </div>
+                `;
+            });
+
+            expensesList.innerHTML = listHTML;
+        }
+
+        // 清除所有資料
+        function clearAllData() {
+            if (confirm('確定要清除所有記錄嗎？')) {
+                localStorage.clear();
+                expenses = [];
+                totalSpent = 0;
+                salaryData = { monthly: 0, daily: 0, hourly: 0 };
+                
+                document.getElementById('monthlySalary').value = '';
+                document.getElementById('dailySalary').value = '';
+                document.getElementById('hourlySalary').value = '';
+                
+                updateBalance();
+                renderCalendar();
+                renderExpensesList();
+            }
+        }
+    </script>
+</body>
+</html>
