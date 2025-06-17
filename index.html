@@ -11,22 +11,7 @@
             box-sizing: border-box;
         }
 
-        // 設定支出預覽功能
-        function setupExpensePreview() {
-            const expenseInput = document.getElementById('expenseAmount');
-            
-            // 即時預覽功能
-            expenseInput.addEventListener('input', function() {
-                const inputValue = parseFloat(this.value) || 0;
-                
-                if (inputValue > 0 && salaryData.daily > 0) {
-                    previewAmount = inputValue;
-                } else {
-                    previewAmount = 0;
-                }
-                
-                renderCalendar(); // 重新渲染日曆以顯示預覽
-            });
+       
 
             // 當輸入框失去焦點時，如果為空則清除預覽
             expenseInput.addEventListener('blur', function() {
@@ -366,8 +351,24 @@
         let expenses = [];
         let totalSpent = 0;
         let previewAmount = 0; // 新增：預覽金額
-
+ // 設定支出預覽功能
+        function setupExpensePreview() {
+            const expenseInput = document.getElementById('expenseAmount');
+            
+            // 即時預覽功能
+            expenseInput.addEventListener('input', function() {
+                const inputValue = parseFloat(this.value) || 0;
+                
+                if (inputValue > 0 && salaryData.daily > 0) {
+                    previewAmount = inputValue;
+                } else {
+                    previewAmount = 0;
+                }
+                
+                renderCalendar(); // 重新渲染日曆以顯示預覽
+            });
         // 初始化
+        
         document.addEventListener('DOMContentLoaded', function() {
             loadData();
             setupSalaryInputs();
