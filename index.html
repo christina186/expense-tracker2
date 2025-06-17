@@ -13,21 +13,6 @@
 
        
 
-            // 當輸入框失去焦點時，如果為空則清除預覽
-            expenseInput.addEventListener('blur', function() {
-                if (!this.value) {
-                    previewAmount = 0;
-                    renderCalendar();
-                }
-            });
-
-            // 支援 Enter 鍵
-            expenseInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    addExpense();
-                }
-            });
-        }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -351,7 +336,7 @@
         let expenses = [];
         let totalSpent = 0;
         let previewAmount = 0; // 新增：預覽金額
- // 設定支出預覽功能
+        // 設定支出預覽功能
         function setupExpensePreview() {
             const expenseInput = document.getElementById('expenseAmount');
             
@@ -367,6 +352,22 @@
                 
                 renderCalendar(); // 重新渲染日曆以顯示預覽
             });
+
+            // 當輸入框失去焦點時，如果為空則清除預覽
+            expenseInput.addEventListener('blur', function() {
+                if (!this.value) {
+                    previewAmount = 0;
+                    renderCalendar();
+                }
+            });
+
+            // 支援 Enter 鍵
+            expenseInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addExpense();
+                }
+            });
+        }  
         // 初始化
         
         document.addEventListener('DOMContentLoaded', function() {
